@@ -79,7 +79,7 @@ function App() {
 
   if (loading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>
-  if (!channelId || !channelData) return <div>No data to display</div>
+  if (!channelId || !channelData) return <div>Allready solved or No data to display</div>
 
   return (
     <div>
@@ -89,7 +89,9 @@ function App() {
       <p>Author: {channelData.author}</p>
       <p>Channel Name: {channelData.channel_name}</p>
       <p>Video Length: {channelData.video_lenght_in_seconds} seconds</p>
+      <p>Max File Size: {channelData.max_file_size} seconds</p>
       <p>FPS: {channelData.fps}</p>
+      <p>Prompt: {channelData.stability_prompt}</p>
       <h2>Images</h2>
       <div style={{ 
         display: 'flex', 
@@ -112,7 +114,7 @@ function App() {
               style={{ 
                 width: '100%', 
                 height: 'auto',
-                border: selectedImage === index ? '4px solid blue' : 'none',
+                border: selectedImage === index ? '4px solid green' : 'none',
                 cursor: 'pointer'
               }}
               onClick={() => handleImageClick(index)}
