@@ -7,7 +7,7 @@ function App() {
   const [channelData, setChannelData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [selectedImage, setSelectedImage] = useState(null)
+  const [selectedImages, setSelectedImages] = useState([]) // Array for multi-select
   const { process_id } = useParams()
 
   useEffect(() => {
@@ -23,7 +23,7 @@ function App() {
 
         if (data && data.status === 'waiting') {
           setChannelId(data.channel_id)
-          setChannelData(JSON.parse(data.channel_data))
+          setChannelData(JSON.parse(data.channel_data)) // Parse the updated structure
         }
       } catch (error) {
         setError(error.message)
@@ -38,16 +38,29 @@ function App() {
   }, [process_id])
 
   const handleImageClick = (index) => {
-    setSelectedImage(index)
+    // Toggle selection with limit based on "to_select"
+    setSelectedImages((prevSelected) => {
+      if (prevSelected.includes(index)) {
+        return prevSelected.filter((id) => id !== index) // Deselect
+      } else if (prevSelected.length < channelData.to_select) {
+        return [...prevSelected, index] // Select
+      } else {
+        alert(`You can only select up to ${channelData.to_select} items.`)
+        return prevSelected
+      }
+    })
   }
 
   const handleSubmit = async () => {
-    if (selectedImage === null) {
-      alert('Please select an image first.')
+    if (selectedImages.length === 0) {
+      alert('Please select at least one image or video first.')
       return
     }
 
-    await updateStatus('selected', channelData.list_of_files[selectedImage].file_id)
+    // Create a comma-separated list of selected file IDs
+    const user_choice = selectedImages.map(index => channelData.list_of_files[index].file_id).join(',')
+
+    await updateStatus('selected', user_choice)
   }
 
   const handleReject = async () => {
@@ -79,7 +92,8 @@ function App() {
 
   if (loading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>
-  if (!channelId || !channelData) return <div>Allready solved or No data to display</div>
+  if (!channelId || !channelData || !Array.isArray(channelData.list_of_files)) 
+    return <div>Already solved or No data to display</div>
 
   return (
     <div>
@@ -89,10 +103,13 @@ function App() {
       <p>Author: {channelData.author}</p>
       <p>Channel Name: {channelData.channel_name}</p>
       <p>Video Length: {channelData.video_lenght_in_seconds} seconds</p>
-      <p>Max File Size: {channelData.max_file_size} seconds</p>
+      <p>Max File Size: {channelData.max_file_size} bytes</p>
+      <p>To Select: {channelData.to_select}</p>
+      <p>Content Type: {channelData.content_type}</p>
       <p>FPS: {channelData.fps}</p>
       <p>Prompt: {channelData.stability_prompt}</p>
-      <h2>Images</h2>
+
+      <h2>{channelData.content_type === 'image' ? 'Images' : 'Videos'}</h2>
       <div style={{ 
         display: 'flex', 
         flexWrap: 'wrap', 
@@ -108,25 +125,47 @@ function App() {
               textAlign: 'center'
             }}
           >
-            <img 
-              src={file.s3_url} 
-              alt={`Frame ${file.file_id}`} 
-              style={{ 
-                width: '100%', 
-                height: 'auto',
-                border: selectedImage === index ? '4px solid green' : 'none',
-                cursor: 'pointer'
-              }}
-              onClick={() => handleImageClick(index)}
-            />
-            <p>{file.name}</p>
+            {channelData.content_type === 'image' ? (
+              <>
+                <img 
+                  src={file.s3_url} 
+                  alt={`Frame ${file.file_id}`} 
+                  style={{ 
+                    width: '100%', 
+                    height: 'auto',
+                    border: selectedImages.includes(index) ? '4px solid green' : 'none',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => handleImageClick(index)}
+                />
+                <p>{file.name}</p>
+              </>
+            ) : (
+              <>
+                <video 
+                  controls 
+                  style={{ 
+                    width: '100%', 
+                    height: 'auto',
+                    border: selectedImages.includes(index) ? '4px solid green' : 'none',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => handleImageClick(index)}
+                >
+                  <source src={file.s3_url} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+                <p>{file.name}</p>
+              </>
+            )}
           </div>
         ))}
       </div>
+
       <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginTop: '20px' }}>
         <button 
           onClick={handleSubmit} 
-          disabled={selectedImage === null || loading}
+          disabled={selectedImages.length === 0 || loading}
           style={{
             padding: '10px 20px',
             fontSize: '16px',
@@ -139,6 +178,7 @@ function App() {
         >
           {loading ? 'Submitting...' : 'Submit Selection'}
         </button>
+        
         <button 
           onClick={handleReject} 
           disabled={loading}
