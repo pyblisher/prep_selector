@@ -23,7 +23,7 @@ function App() {
 
         if (data && data.status === 'waiting') {
           setChannelId(data.channel_id)
-          setChannelData(JSON.parse(data.channel_data)) // Parse the updated structure
+          setChannelData(data.channel_data) // Parse the updated structure
         }
       } catch (error) {
         setError(error.message)
